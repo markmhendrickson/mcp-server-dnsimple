@@ -8,11 +8,12 @@ MCP server for DNSimple API interactions, providing tools for domain management,
 - **DNS Configuration**: Create, update, list, and delete DNS records
 - **Auto-Renewal Control**: Disable auto-renewal for domains
 - **Domain Transfers**: Initiate domain transfers to DNSimple
+- **Whois Privacy**: Check and enable whois privacy (domain privacy) for domains
 
 ## Installation
 
 ```bash
-cd truth/mcp-servers/dnsimple
+cd execution/mcp-servers/dnsimple
 pip install -r requirements.txt
 ```
 
@@ -44,7 +45,7 @@ Add to your Cursor MCP settings (typically `~/.cursor/mcp.json` or Cursor settin
     "dnsimple": {
       "command": "python",
       "args": [
-        "$REPO_ROOT/truth/mcp-servers/dnsimple/dnsimple_mcp_server.py"
+        "$REPO_ROOT/execution/mcp-servers/dnsimple/dnsimple_mcp_server.py"
       ],
       "env": {
         "DNSIMPLE_API_TOKEN": "your-token-here"
@@ -62,7 +63,7 @@ Or use 1Password integration (recommended):
     "dnsimple": {
       "command": "python",
       "args": [
-        "$REPO_ROOT/truth/mcp-servers/dnsimple/dnsimple_mcp_server.py"
+        "$REPO_ROOT/execution/mcp-servers/dnsimple/dnsimple_mcp_server.py"
       ],
       "env": {}
     }
@@ -80,7 +81,7 @@ Add to `claude_desktop_config.json` (typically `~/Library/Application Support/Cl
     "dnsimple": {
       "command": "python",
       "args": [
-        "$REPO_ROOT/truth/mcp-servers/dnsimple/dnsimple_mcp_server.py"
+        "$REPO_ROOT/execution/mcp-servers/dnsimple/dnsimple_mcp_server.py"
       ]
     }
   }
@@ -399,6 +400,95 @@ Initiate a domain transfer to DNSimple. Requires authorization code from current
 ```
 
 **Note:** Domain must be unlocked at current registrar before transfer can be initiated.
+
+### `get_whois_privacy`
+
+Get whois privacy (domain privacy) status for a domain.
+
+**Parameters:**
+- `domain_name` (required): Domain name (e.g., "example.com")
+
+**Returns:**
+- `domain`: Domain name
+- `enabled`: Boolean indicating if whois privacy is enabled
+- `whois_privacy`: Whois privacy object with details
+- `expires_on`: Expiration date of whois privacy (if enabled)
+
+**Example:**
+```json
+{
+  "domain_name": "example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "domain": "example.com",
+  "enabled": true,
+  "whois_privacy": {
+    "id": 123456,
+    "domain_id": 789012,
+    "enabled": true,
+    "expires_on": "2026-12-31"
+  },
+  "expires_on": "2026-12-31"
+}
+```
+
+### `enable_whois_privacy`
+
+Enable whois privacy (domain privacy) for a domain. This will purchase and enable whois privacy if not already enabled.
+
+**Parameters:**
+- `domain_name` (required): Domain name (e.g., "example.com")
+
+**Returns:**
+- `success`: Boolean indicating success
+- `domain`: Domain name
+- `status`: Status message ("already_enabled" or "enabled")
+- `message`: Human-readable message
+- `whois_privacy`: Whois privacy object with details
+
+**Example:**
+```json
+{
+  "domain_name": "example.com"
+}
+```
+
+**Response (already enabled):**
+```json
+{
+  "domain": "example.com",
+  "status": "already_enabled",
+  "message": "Whois privacy is already enabled for this domain",
+  "whois_privacy": {
+    "id": 123456,
+    "domain_id": 789012,
+    "enabled": true,
+    "expires_on": "2026-12-31"
+  }
+}
+```
+
+**Response (newly enabled):**
+```json
+{
+  "success": true,
+  "domain": "example.com",
+  "status": "enabled",
+  "message": "Whois privacy has been enabled for this domain",
+  "whois_privacy": {
+    "id": 123456,
+    "domain_id": 789012,
+    "enabled": true,
+    "expires_on": "2026-12-31"
+  }
+}
+```
+
+**Note:** Enabling whois privacy may incur a charge depending on your DNSimple plan and TLD.
 
 ## Error Handling
 

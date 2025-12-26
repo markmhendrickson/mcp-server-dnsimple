@@ -312,6 +312,34 @@ async def list_tools() -> List[Tool]:
                 "properties": {},
             },
         ),
+        Tool(
+            name="get_whois_privacy",
+            description="Get whois privacy status for a domain.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "domain_name": {
+                        "type": "string",
+                        "description": "Domain name (e.g., 'example.com')",
+                    },
+                },
+                "required": ["domain_name"],
+            },
+        ),
+        Tool(
+            name="enable_whois_privacy",
+            description="Enable whois privacy (domain privacy) for a domain. This will purchase and enable whois privacy if not already enabled.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "domain_name": {
+                        "type": "string",
+                        "description": "Domain name (e.g., 'example.com')",
+                    },
+                },
+                "required": ["domain_name"],
+            },
+        ),
     ]
 
 
@@ -698,6 +726,122 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                 type="text",
                 text=json.dumps({
                     "error": f"Failed to list domains: {str(e)}",
+                }, indent=2)
+            )]
+    
+    elif name == "get_whois_privacy":
+        domain_name = arguments["domain_name"]
+        
+        try:
+            response = requests.get(
+                f"{DNSIMPLE_API_BASE}/{account_id}/registrar/domains/{domain_name}/whois_privacy",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                whois_data = response.json().get("data", {})
+                return [TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "domain": domain_name,
+                        "whois_privacy": whois_data,
+                        "enabled": whois_data.get("enabled", False),
+                        "expires_on": whois_data.get("expires_on"),
+                    }, indent=2, default=str)
+                )]
+            elif response.status_code == 404:
+                return [TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "domain": domain_name,
+                        "enabled": False,
+                        "message": "Whois privacy not purchased or not available for this domain",
+                    }, indent=2)
+                )]
+            else:
+                error_text = response.text
+                try:
+                    error_json = response.json()
+                    error_message = error_json.get("message", error_text)
+                except:
+                    error_message = error_text
+                
+                return [TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to get whois privacy status: {response.status_code}",
+                        "message": error_message,
+                    }, indent=2)
+                )]
+        except Exception as e:
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Failed to get whois privacy: {str(e)}",
+                }, indent=2)
+            )]
+    
+    elif name == "enable_whois_privacy":
+        domain_name = arguments["domain_name"]
+        
+        try:
+            # First check current status
+            response = requests.get(
+                f"{DNSIMPLE_API_BASE}/{account_id}/registrar/domains/{domain_name}/whois_privacy",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                whois_data = response.json().get("data", {})
+                if whois_data.get("enabled", False):
+                    return [TextContent(
+                        type="text",
+                        text=json.dumps({
+                            "domain": domain_name,
+                            "status": "already_enabled",
+                            "message": "Whois privacy is already enabled for this domain",
+                            "whois_privacy": whois_data,
+                        }, indent=2, default=str)
+                    )]
+            
+            # Enable/purchase whois privacy
+            response = requests.put(
+                f"{DNSIMPLE_API_BASE}/{account_id}/registrar/domains/{domain_name}/whois_privacy",
+                headers={**headers, "Content-Type": "application/json"}
+            )
+            
+            if response.status_code in [200, 201]:
+                whois_data = response.json().get("data", {})
+                return [TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "success": True,
+                        "domain": domain_name,
+                        "status": "enabled",
+                        "message": "Whois privacy has been enabled for this domain",
+                        "whois_privacy": whois_data,
+                    }, indent=2, default=str)
+                )]
+            else:
+                error_text = response.text
+                try:
+                    error_json = response.json()
+                    error_message = error_json.get("message", error_text)
+                except:
+                    error_message = error_text
+                
+                return [TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Failed to enable whois privacy: {response.status_code}",
+                        "message": error_message,
+                    }, indent=2)
+                )]
+        except Exception as e:
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": f"Failed to enable whois privacy: {str(e)}",
                 }, indent=2)
             )]
     
