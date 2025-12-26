@@ -1,0 +1,2 @@
+"""DNSimple MCP Server"""
+
