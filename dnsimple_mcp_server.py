@@ -16,27 +16,51 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-# Project root directory
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-
-# Try to import credential utility
-try:
-    sys.path.insert(0, str(PROJECT_ROOT))
-    from execution.scripts.credentials import get_credential, get_credential_by_domain
-    HAS_CREDENTIALS_MODULE = True
-except ImportError:
-    HAS_CREDENTIALS_MODULE = False
-
 # DNSimple API configuration
 DNSIMPLE_API_BASE = "https://api.dnsimple.com/v2"
-ENV_FILE = PROJECT_ROOT / ".env"
+
+# Configuration directory (portable, uses user's home directory)
+CONFIG_DIR = Path.home() / ".config" / "dnsimple-mcp"
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+ENV_FILE = CONFIG_DIR / ".env"
+
+# Optional: Try to import 1Password credential utility if available
+# This allows the MCP server to work standalone or with 1Password integration
+HAS_CREDENTIALS_MODULE = False
+try:
+    # Try importing from common locations (for backward compatibility)
+    # First try parent repo structure (if running from this repo)
+    server_dir = Path(__file__).parent
+    possible_paths = [
+        server_dir.parent.parent.parent,  # execution/mcp-servers/dnsimple -> execution -> personal
+        server_dir.parent.parent,  # mcp-servers/dnsimple -> mcp-servers -> execution
+    ]
+    
+    for parent_path in possible_paths:
+        credentials_path = parent_path / "execution" / "scripts" / "credentials.py"
+        if credentials_path.exists():
+            sys.path.insert(0, str(parent_path))
+            try:
+                from execution.scripts.credentials import get_credential, get_credential_by_domain
+                HAS_CREDENTIALS_MODULE = True
+                break
+            except ImportError:
+                continue
+except Exception:
+    pass
 
 # Initialize MCP server
 app = Server("dnsimple")
 
 
 def load_token_from_env() -> Optional[str]:
-    """Load DNSimple API token from .env file."""
+    """Load DNSimple API token from environment variable or .env file."""
+    # First check environment variable (highest priority)
+    token = os.getenv("DNSIMPLE_API_TOKEN")
+    if token:
+        return token
+    
+    # Then check .env file in config directory
     if not ENV_FILE.exists():
         return None
     
@@ -87,7 +111,8 @@ def get_dnsimple_token_from_1password() -> Optional[str]:
 
 
 def get_dnsimple_token() -> Optional[str]:
-    """Get DNSimple API token from .env file or 1Password."""
+    """Get DNSimple API token from environment variable, .env file, or 1Password."""
+    # Priority: environment variable > .env file > 1Password
     token = load_token_from_env()
     if token:
         return token

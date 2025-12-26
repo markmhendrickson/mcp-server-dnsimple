@@ -21,31 +21,38 @@ pip install -r requirements.txt
 
 ### Authentication
 
-The server supports two authentication methods:
+The server supports multiple authentication methods (checked in priority order):
 
-1. **Environment Variable** (recommended for CI/CD):
+1. **Environment Variable** (recommended, highest priority):
    ```bash
    export DNSIMPLE_API_TOKEN="your-token-here"
    ```
 
-2. **1Password Integration** (recommended for local development):
+2. **Config Directory `.env` File** (portable, user-specific):
+   - Location: `~/.config/dnsimple-mcp/.env`
+   - Format: `DNSIMPLE_API_TOKEN=your-token-here`
+   - The config directory is created automatically on first use
+
+3. **1Password Integration** (optional, for backward compatibility):
+   - Only available if parent repository structure exists
    - Configure 1Password item titled "DNSimple" or with URL "dnsimple.com"
    - Add field: "access token", "api_token", or "token" with your DNSimple API token
    - Get your API token from: https://dnsimple.com/user
 
-The token is automatically cached to `.env` file for future use.
+**Note:** The MCP server is self-contained and portable. It does not require any specific repository structure and can be used in any project.
 
 ### Cursor Configuration
 
 Add to your Cursor MCP settings (typically `~/.cursor/mcp.json` or Cursor settings):
 
+**Option 1: Using environment variable (recommended):**
 ```json
 {
   "mcpServers": {
     "dnsimple": {
-      "command": "python",
+      "command": "python3",
       "args": [
-        "$REPO_ROOT/execution/mcp-servers/dnsimple/dnsimple_mcp_server.py"
+        "/path/to/dnsimple_mcp_server.py"
       ],
       "env": {
         "DNSIMPLE_API_TOKEN": "your-token-here"
@@ -55,21 +62,22 @@ Add to your Cursor MCP settings (typically `~/.cursor/mcp.json` or Cursor settin
 }
 ```
 
-Or use 1Password integration (recommended):
-
+**Option 2: Using config directory (token in ~/.config/dnsimple-mcp/.env):**
 ```json
 {
   "mcpServers": {
     "dnsimple": {
-      "command": "python",
+      "command": "python3",
       "args": [
-        "$REPO_ROOT/execution/mcp-servers/dnsimple/dnsimple_mcp_server.py"
+        "/path/to/dnsimple_mcp_server.py"
       ],
       "env": {}
     }
   }
 }
 ```
+
+**Note:** Replace `/path/to/dnsimple_mcp_server.py` with the actual path to the server file. The server is portable and can be placed anywhere.
 
 ### Claude Desktop Configuration
 
@@ -79,14 +87,19 @@ Add to `claude_desktop_config.json` (typically `~/Library/Application Support/Cl
 {
   "mcpServers": {
     "dnsimple": {
-      "command": "python",
+      "command": "python3",
       "args": [
-        "$REPO_ROOT/execution/mcp-servers/dnsimple/dnsimple_mcp_server.py"
-      ]
+        "/path/to/dnsimple_mcp_server.py"
+      ],
+      "env": {
+        "DNSIMPLE_API_TOKEN": "your-token-here"
+      }
     }
   }
 }
 ```
+
+**Note:** Replace `/path/to/dnsimple_mcp_server.py` with the actual path to the server file.
 
 ## Available Tools
 
@@ -509,9 +522,10 @@ The server returns structured error messages in JSON format when operations fail
 ## Security Notes
 
 - API tokens are never logged or exposed in error messages
-- Tokens can be stored in environment variables or 1Password
+- Tokens can be stored in environment variables, `~/.config/dnsimple-mcp/.env`, or 1Password
 - All API requests use HTTPS
-- Token is automatically cached to `.env` file (with restricted permissions)
+- Config directory `.env` file has restricted permissions (owner read/write only)
+- Environment variables are the most secure method (not persisted to disk)
 
 ## Troubleshooting
 
