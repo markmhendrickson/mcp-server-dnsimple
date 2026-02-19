@@ -278,7 +278,7 @@ Create or update a DNS record. If a record with the same name and type exists, i
 **Parameters:**
 - `domain_name` (required): Domain name (e.g., "example.com")
 - `name` (required): Record name (e.g., "www" or "@" for root domain)
-- `type` (required): DNS record type (A, AAAA, CNAME, MX, TXT, NS, SRV, ALIAS)
+- `type` (required): DNS record type (A, AAAA, CNAME, MX, TXT, NS, SRV, ALIAS, URL). Use **URL** for DNSimple’s redirect (apex or subdomain → target URL).
 - `content` (required): Record content (IP address for A/AAAA, hostname for CNAME, etc.)
 - `ttl` (optional): TTL in seconds (default: 3600)
 - `priority` (optional): Priority for MX records
@@ -321,6 +321,18 @@ Create or update a DNS record. If a record with the same name and type exists, i
   "ttl": 3600
 }
 ```
+
+**Example (URL redirect for apex domain):**
+```json
+{
+  "domain_name": "example.com",
+  "name": "",
+  "type": "URL",
+  "content": "https://github.com/username/repo",
+  "ttl": 3600
+}
+```
+Use empty `name` for apex; DNSimple serves a 301 redirect to `content`. Requires DNSimple nameservers (not applicable if the zone is delegated elsewhere, e.g. Cloudflare).
 
 ### `delete_dns_record`
 
