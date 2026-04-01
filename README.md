@@ -5,6 +5,7 @@ MCP server for DNSimple API interactions, providing tools for domain management,
 ## Features
 
 - **Domain Management**: List domains, get pricing, check renewal costs
+- **Nameserver Delegation**: Read and update registrar-level domain nameservers
 - **DNS Configuration**: Create, update, list, and delete DNS records
 - **Auto-Renewal Control**: Disable auto-renewal for domains
 - **Domain Transfers**: Initiate domain transfers to DNSimple
@@ -127,6 +128,50 @@ List all domains in the DNSimple account.
       "auto_renew": true,
       "registrant_id": 789
     }
+  ]
+}
+```
+
+### `get_domain_nameservers`
+
+Get the current delegated nameservers set at the registrar for a domain.
+
+**Parameters:**
+- `domain_name` (required): Domain name (e.g., "example.com")
+
+**Returns:**
+- `domain`: Domain name
+- `nameservers`: Current delegated nameservers
+- `delegation`: Raw DNSimple delegation payload
+
+**Example:**
+```json
+{
+  "domain_name": "example.com"
+}
+```
+
+### `update_domain_nameservers`
+
+Replace delegated nameservers for a domain at the registrar level.
+
+**Parameters:**
+- `domain_name` (required): Domain name (e.g., "example.com")
+- `nameservers` (required): Array of nameserver hostnames (minimum 2)
+
+**Returns:**
+- `success`: Boolean indicating success
+- `domain`: Domain name
+- `nameservers`: Updated delegated nameservers
+- `delegation`: Raw DNSimple delegation payload
+
+**Example:**
+```json
+{
+  "domain_name": "example.com",
+  "nameservers": [
+    "kipp.ns.cloudflare.com",
+    "mona.ns.cloudflare.com"
   ]
 }
 ```

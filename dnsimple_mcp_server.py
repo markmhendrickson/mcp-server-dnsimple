@@ -352,6 +352,40 @@ async def list_tools() -> List[Tool]:
             },
         ),
         Tool(
+            name="get_domain_nameservers",
+            description="Get current delegated nameservers for a domain.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "domain_name": {
+                        "type": "string",
+                        "description": "Domain name (e.g., 'example.com')",
+                    },
+                },
+                "required": ["domain_name"],
+            },
+        ),
+        Tool(
+            name="update_domain_nameservers",
+            description="Replace delegated nameservers for a domain (registrar delegation update).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "domain_name": {
+                        "type": "string",
+                        "description": "Domain name (e.g., 'example.com')",
+                    },
+                    "nameservers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Full nameserver hostnames to set (e.g., ['ns1.example.com', 'ns2.example.com'])",
+                        "minItems": 2,
+                    },
+                },
+                "required": ["domain_name", "nameservers"],
+            },
+        ),
+        Tool(
             name="get_whois_privacy",
             description="Get whois privacy status for a domain.",
             inputSchema={
@@ -875,6 +909,121 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                     text=json.dumps(
                         {
                             "error": f"Failed to list domains: {str(e)}",
+                        },
+                        indent=2,
+                    ),
+                )
+            ]
+
+    elif name == "get_domain_nameservers":
+        domain_name = arguments["domain_name"]
+
+        response = requests.get(
+            f"{DNSIMPLE_API_BASE}/{account_id}/registrar/domains/{domain_name}/delegation",
+            headers=headers,
+        )
+
+        if response.status_code == 200:
+            raw_data = response.json().get("data")
+            if isinstance(raw_data, list):
+                nameservers_list = raw_data
+                payload = {"name_servers": raw_data}
+            elif isinstance(raw_data, dict):
+                nameservers_list = raw_data.get("name_servers", [])
+                payload = raw_data
+            else:
+                nameservers_list = []
+                payload = {"name_servers": []}
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "domain": domain_name,
+                            "nameservers": nameservers_list,
+                            "delegation": payload,
+                        },
+                        indent=2,
+                        default=str,
+                    ),
+                )
+            ]
+        else:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "error": f"Failed to get domain nameservers: {response.status_code}",
+                            "response": response.text,
+                        },
+                        indent=2,
+                    ),
+                )
+            ]
+
+    elif name == "update_domain_nameservers":
+        domain_name = arguments["domain_name"]
+        nameservers = arguments.get("nameservers", [])
+        normalized_nameservers = [
+            str(ns).strip().rstrip(".").lower()
+            for ns in nameservers
+            if str(ns).strip()
+        ]
+
+        if len(normalized_nameservers) < 2:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "error": "At least two nameservers are required.",
+                        },
+                        indent=2,
+                    ),
+                )
+            ]
+
+        response = requests.put(
+            f"{DNSIMPLE_API_BASE}/{account_id}/registrar/domains/{domain_name}/delegation",
+            headers={**headers, "Content-Type": "application/json"},
+            json=normalized_nameservers,
+        )
+
+        if response.status_code == 200:
+            raw_data = response.json().get("data")
+            if isinstance(raw_data, list):
+                nameservers_list = raw_data
+                payload = {"name_servers": raw_data}
+            elif isinstance(raw_data, dict):
+                nameservers_list = raw_data.get("name_servers", normalized_nameservers)
+                payload = raw_data
+            else:
+                nameservers_list = normalized_nameservers
+                payload = {"name_servers": normalized_nameservers}
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "domain": domain_name,
+                            "nameservers": nameservers_list,
+                            "delegation": payload,
+                        },
+                        indent=2,
+                        default=str,
+                    ),
+                )
+            ]
+        else:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "error": f"Failed to update nameservers: {response.status_code}",
+                            "response": response.text,
                         },
                         indent=2,
                     ),
